@@ -4,7 +4,7 @@ use newsapi::constants::SortMethod;
 use newsapi::payload::article::{Article, Articles};
 use regex::Regex;
 
-pub struct News {
+pub(crate) struct News {
     title: String,
     source: String,
     url: String,
@@ -25,8 +25,8 @@ impl From<Article> for News {
     }
 }
 
-impl News {
-    pub fn to_string(&self) -> String {
+impl crate::Fmt for News {
+    fn to_string(&self) -> String {
         format!(
             "title: {title}\nsource: {source}\nurl: {url}\nabout: {description}\n",
             title = self.title,
@@ -36,7 +36,7 @@ impl News {
         )
     }
 
-    pub fn to_html(&self) -> String {
+    fn to_html(&self) -> String {
         format!(
             r#"<div class="article"><h2 class="title">{title}</h2><h3 class="source">{source}</h3><a class="url" href="{url}">{url}</a><p class="about">{description}</p></div>"#,
             title = self.title,
@@ -47,8 +47,12 @@ impl News {
     }
 }
 
-pub async fn get_news(api: String, domains: Vec<&str>, from: &DateTime<Utc>) -> Vec<News> {
-    NewsAPIClient::new(api)
+pub(crate) async fn get_news(
+    api_key: &String,
+    domains: Vec<&str>,
+    from: &DateTime<Utc>,
+) -> Vec<News> {
+    NewsAPIClient::new(api_key.to_string())
         .domains(domains)
         .from(from)
         .sort_by(SortMethod::PublishedAt)
