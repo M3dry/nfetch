@@ -1,8 +1,12 @@
 [package]
-name = "mfetch"
+name = "nfetch"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+newsapi = "0.6.0"
+chrono = "0.4.19"
+tokio = { version = "1", features = ["full"] }
+regex = "1"
