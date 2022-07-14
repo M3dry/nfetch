@@ -45,6 +45,11 @@ impl crate::Fmt for News {
             description = self.description
         )
     }
+
+    fn feed(&self, str: &mut String, html: &mut String) {
+        str.push_str(&format!("{}\n", self.to_string()));
+        html.push_str(&format!("{}", self.to_html()));
+    }
 }
 
 pub(crate) async fn get_news(

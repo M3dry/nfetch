@@ -9,7 +9,7 @@ pub(crate) struct Stock {
 impl crate::Fmt for Stock {
     fn to_string(&self) -> String {
         format!(
-            "{name} - OPEN: {open} HIGH: {high} LOW: {low} CLOSE: {close} VOLUME: {volume}",
+            "{name} - OPEN: {open} HIGH: {high} LOW: {low} CLOSE: {close} VOLUME: {volume}\n",
             name = self.name,
             open = self.entry.open,
             high = self.entry.high,
@@ -35,7 +35,7 @@ impl crate::Fmt for Stock {
 impl crate::Fmt for ExchangeRate {
     fn to_string(&self) -> String {
         format!(
-            "1 {from} = {rate} {to}",
+            "1 {from} = {rate} {to}\n",
             from = self.from.code,
             rate = self.rate,
             to = self.to.code

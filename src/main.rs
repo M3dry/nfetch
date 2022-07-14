@@ -8,6 +8,10 @@ use std::io::Write;
 pub(crate) trait Fmt {
     fn to_string(&self) -> String;
     fn to_html(&self) -> String;
+    fn feed(&self, str: &mut String, html: &mut String) {
+        str.push_str(&format!("{}", self.to_string()));
+        html.push_str(&format!("{}", self.to_html()));
+    }
 }
 
 struct Active {
@@ -44,6 +48,8 @@ async fn main() {
         .open(&conf.html)
         .expect("Can't write to a file");
     let active = Active::new(&conf);
+    let mut feed_str: String = String::new();
+    let mut feed_html: String = String::new();
 
     if active.news {
         let news = news::get_news(
@@ -63,11 +69,7 @@ async fn main() {
                 }
             }
 
-            println!("{}\n", new.to_string());
-
-            if let Err(e) = writeln!(html_file, "{}", new.to_html()) {
-                eprintln!("Couldn't write to a html file: {e}");
-            }
+            new.feed(&mut feed_str, &mut feed_html);
         }
     }
 
@@ -82,11 +84,7 @@ async fn main() {
         .await;
 
         for stonk in &stonks {
-            println!("{}", stonk.to_string());
-
-            if let Err(e) = writeln!(html_file, "{}", stonk.to_html()) {
-                eprintln!("Couldn't write to a html file: {e}");
-            }
+            stonk.feed(&mut feed_str, &mut feed_html);
         }
     }
     if active.currencies {
@@ -94,18 +92,19 @@ async fn main() {
             &conf.keys.stocks,
             match &conf.currencies {
                 Some(x) => x.to_vec(),
-                None => vec![vec!["".to_string()]]
+                None => vec![vec!["".to_string()]],
             },
         )
         .await;
 
-        println!();
+        feed_str.push_str(&format!("\n"));
         for exchange_rate in &exchange_rates {
-            println!("{}", exchange_rate.to_string());
-
-            if let Err(e) = writeln!(html_file, "{}", exchange_rate.to_html()) {
-                eprintln!("Couldn't write to a html file: {e}");
-            }
+            exchange_rate.feed(&mut feed_str, &mut feed_html);
         }
+    }
+
+    print!("{}", feed_str);
+    if let Err(e) = writeln!(html_file, "{}", feed_html) {
+        eprintln!("Couldn't write to a html file: {e}");
     }
 }
