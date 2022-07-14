@@ -17,8 +17,8 @@ impl From<Article> for News {
             title: article.title,
             source: article.source.name,
             url: article.url,
-            description: match &article.description {
-                Some(x) => String::from(Regex::new("/<.*>.*</.*>").unwrap().replace_all(x, "")),
+            description: match article.description {
+                Some(x) => x,
                 None => "".to_string(),
             },
         }
@@ -49,11 +49,11 @@ impl crate::Fmt for News {
 
 pub(crate) async fn get_news(
     api_key: &String,
-    domains: Vec<&str>,
+    domains: Vec<String>,
     from: &DateTime<Utc>,
 ) -> Vec<News> {
     NewsAPIClient::new(api_key.to_string())
-        .domains(domains)
+        .domains(domains.iter().map(|s| &**s).collect())
         .from(from)
         .sort_by(SortMethod::PublishedAt)
         .everything()

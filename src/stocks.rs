@@ -75,14 +75,13 @@ pub(crate) async fn get_stocks(api_key: &String, stocks: Vec<String>) -> Vec<Sto
 
 pub(crate) async fn get_currencies_rates(
     api_key: &String,
-    from: Vec<String>,
-    to: Vec<String>,
+    from_to: Vec<Vec<String>>,
 ) -> Vec<ExchangeRate> {
     let client = Client::new(api_key);
     let mut ret: Vec<ExchangeRate> = vec![];
 
-    for (i, j) in from.iter().zip(to.iter()) {
-        ret.push(client.get_exchange_rate(i, j).await.unwrap())
+    for val in &from_to {
+        ret.push(client.get_exchange_rate(&val[0], &val[1]).await.unwrap());
     }
 
     ret

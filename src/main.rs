@@ -1,66 +1,111 @@
+mod config;
 mod news;
 mod stocks;
 
 use chrono::prelude::Utc;
-use std::env;
-
-struct Keys {
-    news: String,
-    stocks: String,
-}
+use std::io::Write;
 
 pub(crate) trait Fmt {
     fn to_string(&self) -> String;
     fn to_html(&self) -> String;
 }
 
+struct Active {
+    news: bool,
+    stocks: bool,
+    currencies: bool,
+}
+
+impl Active {
+    pub(crate) fn new(conf: &config::Conf) -> Active {
+        Active {
+            news: match conf.news {
+                None => false,
+                Some(_) => true,
+            },
+            stocks: match conf.stock_companies {
+                None => false,
+                Some(_) => true,
+            },
+            currencies: match conf.currencies {
+                None => false,
+                Some(_) => true,
+            },
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
-    let keys = Keys {
-        news: env::var("NEWSAPI_KEY").unwrap(),
-        stocks: env::var("ALPHAVANTAGE_KEY").unwrap(),
-    };
-    let news = news::get_news(
-        &keys.news,
-        vec!["apnews.com", "reuters.com"],
-        &Utc::today().and_hms(0, 0, 0),
-    )
-    .await;
-    let stonks =
-        stocks::get_stocks(&keys.stocks, vec!["GOOG".to_string(), "AAPL".to_string()]).await;
-    let exchange_rates = stocks::get_currencies_rates(
-        &keys.stocks,
-        vec!["CZK".to_string(), "USD".to_string()],
-        vec!["EUR".to_string(), "CZK".to_string()],
-    )
-    .await;
+    let conf = config::Conf::new();
+    std::fs::File::create(&conf.html).expect("Can't create a file");
+    let mut html_file = std::fs::File::options()
+        .append(true)
+        .open(&conf.html)
+        .expect("Can't write to a file");
+    let active = Active::new(&conf);
 
-    for (i, new) in news.iter().enumerate() {
-        if i < 5 {
-            println!("{}\n", new.to_string())
+    if active.news {
+        let news = news::get_news(
+            &conf.keys.news,
+            match &conf.news {
+                Some(x) => x.domains.to_vec(),
+                None => vec!["".to_string()],
+            },
+            &Utc::today().and_hms(0, 0, 0),
+        )
+        .await;
+
+        for (i, new) in news.iter().enumerate() {
+            if let Some(x) = &conf.news {
+                if i as i32 == x.number_of_articles {
+                    break;
+                }
+            }
+
+            println!("{}\n", new.to_string());
+
+            if let Err(e) = writeln!(html_file, "{}", new.to_html()) {
+                eprintln!("Couldn't write to a html file: {e}");
+            }
         }
     }
 
-    for stonk in &stonks {
-        println!("{}", stonk.to_string());
-    }
+    if active.stocks {
+        let stonks = stocks::get_stocks(
+            &conf.keys.stocks,
+            match &conf.stock_companies {
+                Some(x) => x.to_vec(),
+                None => vec!["".to_string()],
+            },
+        )
+        .await;
 
-    for exchange_rate in &exchange_rates {
-        println!("{}", exchange_rate.to_string());
-    }
+        for stonk in &stonks {
+            println!("{}", stonk.to_string());
 
-
-    for (i, new) in news.iter().enumerate() {
-        if i < 5 {
-            println!("{}\n", new.to_html())
+            if let Err(e) = writeln!(html_file, "{}", stonk.to_html()) {
+                eprintln!("Couldn't write to a html file: {e}");
+            }
         }
     }
+    if active.currencies {
+        let exchange_rates = stocks::get_currencies_rates(
+            &conf.keys.stocks,
+            match &conf.currencies {
+                Some(x) => x.to_vec(),
+                None => vec![vec!["".to_string()]]
+            },
+        )
+        .await;
 
-    for stonk in &stonks {
-        println!("{}", stonk.to_html());
-    }
+        println!();
+        for exchange_rate in &exchange_rates {
+            println!("{}", exchange_rate.to_string());
 
-    for exchange_rate in &exchange_rates {
-        println!("{}", exchange_rate.to_html());
+            if let Err(e) = writeln!(html_file, "{}", exchange_rate.to_html()) {
+                eprintln!("Couldn't write to a html file: {e}");
+            }
+        }
     }
 }
