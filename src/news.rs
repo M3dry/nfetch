@@ -2,8 +2,8 @@ use chrono::{prelude::Utc, DateTime};
 use newsapi::api::NewsAPIClient;
 use newsapi::constants::SortMethod;
 use newsapi::payload::article::{Article, Articles};
-use regex::Regex;
 
+#[derive(Debug)]
 pub(crate) struct News {
     title: String,
     source: String,
@@ -52,21 +52,24 @@ impl crate::Fmt for News {
     }
 }
 
-pub(crate) async fn get_news(
-    api_key: &String,
-    domains: Vec<String>,
-    from: &DateTime<Utc>,
+pub(crate) async fn get_news<'a>(
+    api_key: &'a String,
+    domains: Option<&Vec<String>>,
+    from: DateTime<Utc>,
 ) -> Vec<News> {
-    NewsAPIClient::new(api_key.to_string())
-        .domains(domains.iter().map(|s| &**s).collect())
-        .from(from)
-        .sort_by(SortMethod::PublishedAt)
-        .everything()
-        .send_async::<Articles>()
-        .await
-        .unwrap()
-        .articles
-        .into_iter()
-        .map(|x| -> News { News::from(x) })
-        .collect()
+    if let Some(doms) = domains {
+        return NewsAPIClient::new(api_key.to_string())
+            .domains(doms.iter().map(|s| &**s).collect())
+            .from(&from)
+            .sort_by(SortMethod::PublishedAt)
+            .everything()
+            .send_async::<Articles>()
+            .await
+            .unwrap()
+            .articles
+            .into_iter()
+            .map(|x| -> News { News::from(x) })
+            .collect();
+    }
+    vec![]
 }

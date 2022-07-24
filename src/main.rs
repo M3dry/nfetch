@@ -14,31 +14,6 @@ pub(crate) trait Fmt {
     }
 }
 
-struct Active {
-    news: bool,
-    stocks: bool,
-    currencies: bool,
-}
-
-impl Active {
-    pub(crate) fn new(conf: &config::Conf) -> Active {
-        Active {
-            news: match conf.news {
-                None => false,
-                Some(_) => true,
-            },
-            stocks: match conf.stock_companies {
-                None => false,
-                Some(_) => true,
-            },
-            currencies: match conf.currencies {
-                None => false,
-                Some(_) => true,
-            },
-        }
-    }
-}
-
 #[tokio::main]
 async fn main() {
     let conf = config::Conf::new();
@@ -47,60 +22,58 @@ async fn main() {
         .append(true)
         .open(&conf.html)
         .expect("Can't write to a file");
-    let active = Active::new(&conf);
     let mut feed_str: String = String::new();
     let mut feed_html: String = String::new();
+    let news;
+    let stonks;
+    let exchange_rates;
 
-    if active.news {
-        let news = news::get_news(
-            &conf.keys.news,
-            match &conf.news {
-                Some(x) => x.domains.to_vec(),
-                None => vec!["".to_string()],
-            },
-            &Utc::today().and_hms(0, 0, 0),
-        )
-        .await;
+    news = news::get_news(
+        &conf.keys.news,
+        match &conf.news {
+            Some(x) => Some(&x.domains),
+            None => None,
+        },
+        Utc::today().and_hms(0, 0, 0),
+    );
+    stonks = stocks::get_stocks(
+        &conf.keys.stocks,
+        match &conf.stock_companies {
+            Some(x) => Some(x),
+            None => None,
+        },
+    );
 
-        for (i, new) in news.iter().enumerate() {
-            if let Some(x) = &conf.news {
-                if i as i32 == x.number_of_articles {
-                    break;
-                }
+    exchange_rates = stocks::get_currencies_rates(
+        &conf.keys.stocks,
+        match &conf.currencies {
+            Some(x) => Some(x),
+            None => None,
+        },
+    );
+
+    let (news, stonks, exchange_rates) = tokio::join!(news, stonks, exchange_rates);
+
+    for (i, new) in news.iter().enumerate() {
+        if let Some(x) = &conf.news {
+            if i as i32 == x.number_of_articles {
+                break;
             }
-
-            new.feed(&mut feed_str, &mut feed_html);
         }
+
+        new.feed(&mut feed_str, &mut feed_html);
     }
 
-    if active.stocks {
-        let stonks = stocks::get_stocks(
-            &conf.keys.stocks,
-            match &conf.stock_companies {
-                Some(x) => x.to_vec(),
-                None => vec!["".to_string()],
-            },
-        )
-        .await;
-
-        for stonk in &stonks {
-            stonk.feed(&mut feed_str, &mut feed_html);
-        }
+    for stonk in &stonks {
+        stonk.feed(&mut feed_str, &mut feed_html);
     }
-    if active.currencies {
-        let exchange_rates = stocks::get_currencies_rates(
-            &conf.keys.stocks,
-            match &conf.currencies {
-                Some(x) => x.to_vec(),
-                None => vec![vec!["".to_string()]],
-            },
-        )
-        .await;
 
+    if stonks.len() != 0 {
         feed_str.push_str(&format!("\n"));
-        for exchange_rate in &exchange_rates {
-            exchange_rate.feed(&mut feed_str, &mut feed_html);
-        }
+    }
+
+    for exchange_rate in &exchange_rates {
+        exchange_rate.feed(&mut feed_str, &mut feed_html);
     }
 
     print!("{}", feed_str);

@@ -20,7 +20,7 @@ pub(crate) struct Conf {
     pub(crate) keys: Keys,
     pub(crate) news: Option<NewsConf>,
     pub(crate) stock_companies: Option<Vec<String>>,
-    pub(crate) currencies: Option<Vec<Vec<String>>>,
+    pub(crate) currencies: Option<Vec<(String, String)>>,
 }
 
 impl Conf {
@@ -40,7 +40,7 @@ impl Conf {
                 number_of_articles: 10,
             }),
             stock_companies: Some(vec!["AAPL".to_string(), "GOOG".to_string()]),
-            currencies: Some(vec![vec!["CZK".to_string(), "EUR".to_string()]]),
+            currencies: Some(vec![("CZK".to_string(), "EUR".to_string())]),
         })
         .check_keys(filename)
     }

@@ -52,22 +52,24 @@ impl crate::Fmt for ExchangeRate {
     }
 }
 
-pub(crate) async fn get_stocks(api_key: &String, stocks: Vec<String>) -> Vec<Stock> {
+pub(crate) async fn get_stocks(api_key: &String, stocks: Option<&Vec<String>>) -> Vec<Stock> {
     let client = Client::new(api_key);
     let mut ret: Vec<Stock> = vec![];
 
-    for stock in &stocks {
-        ret.push(Stock {
-            name: stock.to_string(),
-            entry: client
-                .get_time_series_daily(&stock)
-                .await
-                .unwrap()
-                .entries
-                .last()
-                .unwrap()
-                .clone(),
-        })
+    if let Some(stonks) = stocks {
+        for stock in stonks {
+            ret.push(Stock {
+                name: stock.to_string(),
+                entry: client
+                    .get_time_series_daily(stock)
+                    .await
+                    .unwrap()
+                    .entries
+                    .last()
+                    .unwrap()
+                    .clone(),
+            })
+        }
     }
 
     ret
@@ -75,13 +77,15 @@ pub(crate) async fn get_stocks(api_key: &String, stocks: Vec<String>) -> Vec<Sto
 
 pub(crate) async fn get_currencies_rates(
     api_key: &String,
-    from_to: Vec<Vec<String>>,
+    from_to: Option<&Vec<(String, String)>>,
 ) -> Vec<ExchangeRate> {
     let client = Client::new(api_key);
     let mut ret: Vec<ExchangeRate> = vec![];
 
-    for val in &from_to {
-        ret.push(client.get_exchange_rate(&val[0], &val[1]).await.unwrap());
+    if let Some(currs) = from_to {
+        for val in currs {
+            ret.push(client.get_exchange_rate(&val.0, &val.1).await.unwrap());
+        }
     }
 
     ret
