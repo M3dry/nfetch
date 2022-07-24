@@ -23,7 +23,7 @@ async fn main() {
         .open(&conf.html)
         .expect("Can't write to a file");
     let mut feed_str: String = String::new();
-    let mut feed_html: String = String::new();
+    let mut feed_html: String = String::from(r#"<link rel="stylesheet" href="style.css"> "#);
     let news;
     let stonks;
     let exchange_rates;
